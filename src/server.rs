@@ -1,41 +1,38 @@
 use tonic::{transport::Server, Request, Response, Status};
 
-use payments::bitcoin_server::{Bitcoin, BitcoinServer};
-use payments::{BtcPaymentRequest, BtcPaymentResponse};
+use todo::todo_server::{Todo, TodoServer};
+use todo::{CreateTodoRequest, TodoResponse};
 
-pub mod payments {
-    tonic::include_proto!("payments");
+mod todo {
+    include!("todo.rs");
 }
 
-#[derive(Debug, Default)]
-pub struct BitcoinService {}
+#[derive(Default, Debug)]
+struct TodoImpl {}
 
 #[tonic::async_trait]
-impl Bitcoin for BitcoinService {
-    async fn send_payment(
+impl Todo for TodoImpl {
+    async fn create_item(
         &self,
-        request: Request<BtcPaymentRequest>,
-    ) -> Result<Response<BtcPaymentResponse>, Status> {
-        println!("Got a request: {:?}", request);
-
-        let req = request.into_inner();
-
-        let reply = BtcPaymentResponse {
-            successful: true,
-            message: format!("Send {} BTC to {}.", req.amount, req.to_addr).into(),
-        };
-
-        Ok(Response::new(reply))
+        request: Request<CreateTodoRequest>,
+    ) -> Result<Response<TodoResponse>, Status> {
+        let todo_req = request.into_inner();
+        todo!()
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:50051".parse()?;
-    let btc_service = BitcoinService::default();
+    let addr = "[::1]:50051".parse().unwrap();
+    let todo = TodoImpl::default();
+
+    let reflection_service = tonic_reflection::server::Builder::configure()
+        .build()
+        .unwrap();
 
     Server::builder()
-        .add_service(BitcoinServer::new(btc_service))
+        .add_service(TodoServer::new(todo))
+        .add_service(reflection_service)
         .serve(addr)
         .await?;
 
